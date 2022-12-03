@@ -1,0 +1,114 @@
+const path = require('path')
+const cors = require('cors')
+const bodyParser = require('body-parser')
+const cookieParser = require('cookie-parser')
+const express = require('express')
+const logger = require('morgan')
+const querystring = require('querystring')
+const helmet = require('helmet')
+
+// Load environment variables using dotenv
+require('dotenv').config({ path: 'variables.env' })
+
+const helpers = require('./helpers')
+const { translate, initializeTranslations, setFallbackLocale } = require('./i18n/i18n')
+const breadcrumb = require('./lib/breadcrumb')
+const { updateCookie } = require('./lib/cookies')
+const settings = require('./lib/settings')
+const routes = require('./routes/index')
+const { getSpace, getLocales } = require('./services/contentful')
+const { catchErrors } = require('./handlers/errorHandlers')
+
+const SETTINGS_NAME = 'theExampleAppSettings'
+const port = process.env.PORT || 5000
+const app = express()
+
+app.use(cors())
+// View engine setup
+app.set('views', path.join(__dirname, 'views'))
+app.set('view engine', 'pug')
+
+app.use(logger('dev'))
+app.use(helmet())
+app.use(bodyParser.json())
+app.use(bodyParser.urlencoded({ extended: true }))
+app.use(cookieParser())
+app.use(express.static(path.join(__dirname, 'public')))
+
+// const nftcreate = require('./services/nftcreate.js')
+// const mintnft = require('./services/mintnft.js')
+// const main = require('./services/deploy.js')
+
+
+// Force all requests on production to be served over https
+app.use(function (req, res, next) {
+  if (req.headers['x-forwarded-proto'] !== 'https' && process.env.NODE_ENV === 'production') {
+    const secureUrl = 'https://' + req.hostname + req.originalUrl
+    res.redirect(302, secureUrl)
+  }
+  next()
+})
+
+// Set our application settings based on environment variables or query parameters
+app.use(settings)
+
+// Make data available for our views to consume
+app.use(catchErrors(async function (request, response, next) {
+  response.locals.baseUrl = `${request.protocol}://${request.headers.host}`
+  // Get enabled locales from Contentful
+  response.locals.locales = [{code: 'en-US', name: 'U.S. English'}]
+  response.locals.currentLocale = response.locals.locales[0]
+  // Inject custom helpers
+  response.locals.helpers = helpers
+
+  // Make query string available in templates to render links properly
+  const cleanQuery = helpers.cleanupQueryParameters(request.query)
+  const qs = querystring.stringify(cleanQuery)
+
+  response.locals.queryString = qs ? `?${qs}` : ''
+  response.locals.queryStringSettings = response.locals.queryString
+  response.locals.query = request.query
+  response.locals.currentPath = request.path
+
+  // Initialize translations and include them on templates
+  
+
+  
+ 
+// Test space connection and attach space related data for views if possible
+
+app.use(function (err, request, response, next) {
+  // Set locals, only providing error in development
+  response.locals.error = err
+  response.locals.error.status = err.status || 500
+  if (request.app.get('env') !== 'development') {
+    delete err.stack
+  }
+  response.locals.title = 'Error'
+  // Render the error page
+  response.status(err.status || 500)
+  response.render('error')
+})
+app.post('/api/tokens',  (req, res) => {
+ 
+
+  console.log(req.body)
+  res.status(200).send({message: 'This is  token'})
+})
+app.post('/uploud', (req, res) => {
+
+})
+app.get('/*', function (req, res) {
+  res.status(200).sendFile(path.join(__dirname, '/public', 'index.html'))
+})
+
+module.exports = app
+app.use(express.static(path.join(__dirname, '/public')))
+app.use(function (request, response, next) {
+  const err = new Error(translate('errorMessage404Route', response.locals.currentLocale.code))
+  err.status = 404
+  next(err)
+})
+app.listen(port, () => {
+  console.log(`Example app listening on port ${port}`)
+})
