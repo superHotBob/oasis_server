@@ -1,9 +1,9 @@
 const Pool = require('pg').Pool
 const pool = new Pool({
-  user: process.env.user,
+  user: 'iuevfshp',
   host: 'dumbo.db.elephantsql.com',
   database: 'iuevfshp',
-  password: process.env.password,
+  password: 'j2mvF-VuCH_1Ryz3KUz9AIID4iZteVLc',
   port: 5432
 })
 const getUsers = (request, response) => {
